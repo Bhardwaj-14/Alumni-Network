@@ -1,0 +1,137 @@
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title>Alumni Network</title>
+    <link rel="icon" type="image/png" href="favicon.webp">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <img src="logo.png" class="corner-logo">
+    <div class="card" role="main">
+        <h2>Alumni Verification</h2>
+
+        <div class="inputs">
+            <select id="name">
+                <option value="">-- Select Student Name --</option>
+            </select>
+            <input type="date" id="dob">
+            <input type="text" id="year" placeholder="Year of Passing">
+        </div>
+
+        <button id="verifyBtn">Verify</button>
+    </div>
+
+    <audio id="accepted" src="accepted.mp3" preload="auto"></audio>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script>
+        let alumniData = [];
+
+        fetch("alumni.csv")
+            .then(response => {
+                if (!response.ok) throw new Error("alumni.csv not found in same folder");
+                return response.text();
+            })
+            .then(csv => {
+                Papa.parse(csv, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        alumniData = results.data.map(row => ({
+                            name: (row.name || "").toLowerCase().trim(),
+                            dob: (row.dob || "").toLowerCase().trim(),
+                            year: (row.year || "").toLowerCase().trim()
+                        }));
+
+                        const nameSelect = document.getElementById("name");
+                        const uniqueNames = [...new Set(alumniData.map(s => s.name))].sort();
+                        uniqueNames.forEach(studentName => {
+                            const option = document.createElement("option");
+                            option.value = studentName;
+                            option.textContent = studentName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                            nameSelect.appendChild(option);
+                        });
+                    }
+                });
+            })
+            .catch(err => {
+                console.warn(err);
+            });
+        const yearLinks = {
+            "2016": "https://chat.whatsapp.com/D7HnVO4xY3z53IZzJTo7pY",
+            "2017": "https://chat.whatsapp.com/Bij1LbGhgSn8y4jTsdrX8F",
+            "2018": "https://chat.whatsapp.com/KhQJXdL7CtT3yhG7MWCs4O",
+            "2019": "https://chat.whatsapp.com/GvTKKWGMumd48TyavRMONh"
+        };
+
+        function checkAlumni() {
+            const name = document.getElementById("name").value.toLowerCase().trim();
+            const dobInput = document.getElementById("dob").value;
+            const year = document.getElementById("year").value.toLowerCase().trim();
+
+            let dob = "";
+            if (dobInput) {
+                const [y, m, d] = dobInput.split('-');
+                dob = `${d}/${m}/${y}`.toLowerCase();
+            }
+
+            const student = alumniData.find(s =>
+                s.name === name &&
+                s.dob === dob &&
+                s.year === year
+            );
+
+            if (student) {
+                const accepted = document.getElementById('accepted');
+                accepted.volume = 1.0;
+                playAccept(3);
+                alert("Match Found, REDIRECTING YOU TO GROUP...");
+
+                if (yearLinks[year]) {
+                    window.location.href = yearLinks[year];
+                } else {
+                    alert("No group found for this graduation year.");
+                }
+            } else {
+                alert("⚠ No match found.");
+            }
+        }
+
+        document.getElementById('verifyBtn').addEventListener('click', checkAlumni);
+
+        let audioCtx;
+        let source;
+        let gainNode;
+
+        function playAccept(multiplier = 1) {
+            const audioElement = document.getElementById('accepted');
+            if (!audioElement) return;
+
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+                if (source) {
+                    try { source.disconnect(); } catch(e){}
+                }
+
+                source = audioCtx.createMediaElementSource(audioElement);
+                gainNode = audioCtx.createGain();
+
+                const safeMultiplier = Math.max(0.1, Math.min(multiplier, 10));
+                source.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume().then(() => audioElement.play().catch(()=>{}));
+                } else {
+                    audioElement.play().catch(()=>{});
+                }
+            } catch (err) {
+                console.warn("WebAudio API error", err);
+                audioElement.play().catch(()=>{});
+            }
+        }
+    </script>
+</body>
+</html>

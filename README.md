@@ -1,0 +1,3 @@
+
+# How to deploy:
+* Download the website code as a zip, then extract it and then upload it on your github and then got to vercel. click on new -> project and follow the onscreen exceptions...
